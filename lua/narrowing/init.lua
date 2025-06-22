@@ -108,6 +108,37 @@ function M.narrow()
   
   vim.keymap.set("n", M.config.keymaps.write, function() M.write() end, { buffer = narrow_buf })
   vim.keymap.set("n", M.config.keymaps.quit, function() M.quit() end, { buffer = narrow_buf })
+  
+  -- Set up autocommands for :w and :wq behavior
+  local augroup = vim.api.nvim_create_augroup("narrowing_buf_" .. narrow_buf, { clear = true })
+  
+  -- Handle :w (write) command
+  vim.api.nvim_create_autocmd("BufWriteCmd", {
+    group = augroup,
+    buffer = narrow_buf,
+    callback = function()
+      M.write()
+    end,
+  })
+  
+  -- Handle buffer close after write (for :wq)
+  vim.api.nvim_create_autocmd("BufUnload", {
+    group = augroup,
+    buffer = narrow_buf,
+    callback = function()
+      -- Clean up state when buffer is closed
+      M.state.narrowed_buffers[narrow_buf] = nil
+      local original_narrowed = M.state.original_buffers[original_buf]
+      if original_narrowed then
+        for i, buf in ipairs(original_narrowed) do
+          if buf == narrow_buf then
+            table.remove(original_narrowed, i)
+            break
+          end
+        end
+      end
+    end,
+  })
 end
 
 function M.write()
