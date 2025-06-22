@@ -114,11 +114,12 @@ require("narrowing").setup({
     vertical = true,      -- For split type only
   },
   
-  -- Keymaps (in narrowed buffer)
+  -- Keymaps (disabled by default)
   keymaps = {
+    enabled = false,       -- Set to true to enable default keymaps
     narrow = "<leader>nr", -- Visual mode: narrow selection
-    write = "<leader>nw",  -- Normal mode: write changes
-    quit = "<leader>nq",   -- Normal mode: quit
+    write = "<leader>nw",  -- Normal mode: write changes (in narrowed buffer)
+    quit = "<leader>nq",   -- Normal mode: quit (in narrowed buffer)
   },
   
   -- Behavior
@@ -157,13 +158,36 @@ window = {
 ```
 </details>
 
-## ⌨️ Default Keymaps
+## ⌨️ Keymaps
 
-| Mode | Key | Action |
-|------|-----|---------|
-| Visual | `<leader>nr` | Narrow selection |
-| Normal | `<leader>nw` | Write changes (in narrowed buffer) |
-| Normal | `<leader>nq` | Quit (in narrowed buffer) |
+Keymaps are **disabled by default**. You have two options:
+
+### Option 1: Enable Default Keymaps
+
+```lua
+require("narrowing").setup({
+  keymaps = {
+    enabled = true,  -- Enable default keymaps
+  },
+})
+```
+
+This will set up:
+- Visual mode: `<leader>nr` - Narrow selection
+- Normal mode: `<leader>nw` - Write changes (in narrowed buffer)
+- Normal mode: `<leader>nq` - Quit (in narrowed buffer)
+
+### Option 2: Set Your Own Keymaps
+
+```lua
+-- Using <Plug> mapping
+vim.keymap.set("v", "gz", "<Plug>(narrowing-narrow)")
+
+-- Or direct function call
+vim.keymap.set("v", "gz", function()
+  require("narrowing").narrow()
+end)
+```
 
 ## 🔄 Auto-sync Behavior
 

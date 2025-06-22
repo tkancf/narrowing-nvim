@@ -19,6 +19,7 @@ function M.setup(opts)
       vertical = true, -- for split windows
     },
     keymaps = {
+      enabled = false,  -- Set to true to enable default keymaps
       narrow = "<leader>nr",
       write = "<leader>nw",
       quit = "<leader>nq",
@@ -29,9 +30,19 @@ function M.setup(opts)
     highlight_group = "Visual", -- highlight group for region
   }, opts)
   
+  -- Store config globally for plugin access
+  vim.g.narrowing_config = M.config
+  
   -- Set up highlight group if needed
   if M.config.highlight_region then
     vim.api.nvim_set_hl(0, "NarrowingRegion", { link = M.config.highlight_group })
+  end
+  
+  -- Set up visual mode keymap if enabled
+  if M.config.keymaps.enabled and M.config.keymaps.narrow then
+    vim.keymap.set("v", M.config.keymaps.narrow, function()
+      M.narrow()
+    end, { silent = true, desc = "Narrow selection" })
   end
 end
 
@@ -350,9 +361,11 @@ function M.narrow_region(start_line, end_line, bang)
   M.state.original_buffers[original_buf] = M.state.original_buffers[original_buf] or {}
   table.insert(M.state.original_buffers[original_buf], instance_id)
   
-  -- Set up buffer-local keymaps
-  vim.keymap.set("n", M.config.keymaps.write, function() M.widen_region(false) end, { buffer = narrow_buf })
-  vim.keymap.set("n", M.config.keymaps.quit, function() M.quit() end, { buffer = narrow_buf })
+  -- Set up buffer-local keymaps if enabled
+  if M.config.keymaps.enabled then
+    vim.keymap.set("n", M.config.keymaps.write, function() M.widen_region(false) end, { buffer = narrow_buf })
+    vim.keymap.set("n", M.config.keymaps.quit, function() M.quit() end, { buffer = narrow_buf })
+  end
   
   -- Set up auto-sync on write if enabled
   if M.config.sync_on_write then

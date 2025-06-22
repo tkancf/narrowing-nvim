@@ -46,6 +46,7 @@ end, {
   end,
 })
 
+-- Always provide the <Plug> mapping for manual setup
 vim.keymap.set("v", "<Plug>(narrowing-narrow)", function()
   narrowing.narrow()
-end, { silent = true })
+end, { silent = true, desc = "Narrow selection" })
