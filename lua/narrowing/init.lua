@@ -80,6 +80,11 @@ function M.narrow()
   vim.bo[narrow_buf].modifiable = true
   vim.bo[narrow_buf].buftype = ""  -- Allow normal buffer operations like :w
   
+  -- Set a temporary buffer name to avoid "No file name" error
+  local original_name = vim.api.nvim_buf_get_name(original_buf)
+  local buf_name = original_name ~= "" and original_name or "untitled"
+  vim.api.nvim_buf_set_name(narrow_buf, buf_name .. " [Narrowed]")
+  
   local width = math.floor(vim.o.columns * M.config.window.width)
   local height = math.floor(vim.o.lines * M.config.window.height)
   
