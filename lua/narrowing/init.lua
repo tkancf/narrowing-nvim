@@ -137,17 +137,11 @@ function M.narrow()
     end,
   })
   
-  -- Create custom :wq command for narrowed buffer
-  vim.api.nvim_buf_create_user_command(narrow_buf, "wq", function()
-    M.write()
-    M.quit()
-  end, {})
-  
-  -- Also handle :x command (same as :wq)
-  vim.api.nvim_buf_create_user_command(narrow_buf, "x", function()
-    M.write()
-    M.quit()
-  end, {})
+  -- Override :wq and :x commands with buffer-local abbreviations
+  vim.api.nvim_buf_call(narrow_buf, function()
+    vim.cmd("cnoreabbrev <buffer> wq lua require('narrowing').write_and_quit()")
+    vim.cmd("cnoreabbrev <buffer> x lua require('narrowing').write_and_quit()")
+  end)
   
   -- Handle buffer close after write (for :wq)
   vim.api.nvim_create_autocmd("BufUnload", {
@@ -189,6 +183,11 @@ function M.write()
   )
   
   vim.notify("Changes written to original buffer", vim.log.levels.INFO)
+end
+
+function M.write_and_quit()
+  M.write()
+  M.quit()
 end
 
 function M.quit()
