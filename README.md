@@ -1,26 +1,25 @@
 # narrowing.nvim
 
-A Neovim plugin that provides Emacs-style narrowing functionality, similar to NrrwRgn but built specifically for Neovim. Focus on and edit specific regions of text in isolated buffers.
+🎯 A Neovim plugin for Emacs-style narrowing - focus on what matters by isolating text regions in dedicated buffers.
 
-## Features
+## ✨ Features
 
-- **Unified command interface**: Single `:Narrowing` command with subcommands for all functionality
-- **Flexible window types**: Split windows (like NrrwRgn) or floating windows
-- **Auto-sync on write**: Changes automatically sync back to original buffer with `:w`
-- **Region highlighting**: Visual feedback showing narrowed region in original buffer
-- **Buffer protection**: Original buffer becomes read-only during narrowing
-- **Multiple instances**: Support for multiple narrowed regions simultaneously
-- **Visual mode support**: Character-wise, line-wise, and block-wise selections
-- **NrrwRgn-inspired features**: Window narrowing, last region re-selection, and more
-- **Configurable behavior**: Extensive customization options
+- **🎨 Flexible Windows** - Choose between floating windows (default) or splits
+- **🔄 Auto-sync** - Changes automatically sync back with `:w`
+- **🔒 Buffer Protection** - Original buffer becomes read-only during narrowing  
+- **🌈 Visual Feedback** - Highlights narrowed regions in the original buffer
+- **📚 Multiple Instances** - Work with multiple narrowed regions simultaneously
+- **🎯 Smart Selection** - Visual mode, ranges, folds, and window content
+- **⚡ Simple Commands** - Everything through a unified `:Narrowing` command
 
-## Requirements
+## 📋 Requirements
 
 - Neovim 0.7.0 or higher
 
-## Installation
+## 📦 Installation
 
-### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
+<details>
+<summary><b>lazy.nvim</b></summary>
 
 ```lua
 {
@@ -30,8 +29,10 @@ A Neovim plugin that provides Emacs-style narrowing functionality, similar to Nr
   end,
 }
 ```
+</details>
 
-### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
+<details>
+<summary><b>packer.nvim</b></summary>
 
 ```lua
 use {
@@ -41,134 +42,147 @@ use {
   end,
 }
 ```
+</details>
 
-## Usage
+## 🚀 Quick Start
 
-### Basic Narrowing
+1. **Select text** in visual mode
+2. Run `:Narrowing`
+3. Edit in the floating window
+4. Save with `:w` to sync changes
+5. Close with `:q` or `:wq`
 
-1. **Select a region**: Use visual mode to select text, or specify line ranges
-2. **Narrow the region**: Execute `:Narrowing` or `:Narrowing narrow`
-3. **Edit**: Make changes in the narrowed buffer
-4. **Write back**: Use `:w` to automatically sync changes, or `:Narrowing write` to write explicitly
-5. **Close**: Use `:q` to close, or `:wq` to write and close
+## 📖 Commands
 
-### Commands
+All commands are available through `:Narrowing [subcommand]`:
 
-#### Primary Command
-- `:Narrowing [subcommand]` - Main command with optional subcommands
+| Subcommand | Description | Example |
+|------------|-------------|---------|
+| _(none)_ | Narrow current selection/range | `:Narrowing` |
+| `narrow` | Same as above (explicit) | `:Narrowing narrow` |
+| `write` | Write changes back to original | `:Narrowing write` |
+| `quit` | Close without saving | `:Narrowing quit` |
+| `window` | Narrow visible window content | `:Narrowing window` |
+| `fold` | Narrow fold at cursor | `:Narrowing fold` |
+| `last` | Re-narrow last region | `:Narrowing last` |
 
-#### Subcommands
-- `:Narrowing` or `:Narrowing narrow` - Narrow selected region or range
-- `:Narrowing write` - Write changes back to original buffer
-- `:Narrowing quit` - Close narrowed buffer without saving
-- `:Narrowing window` - Narrow current window's visible content
-- `:Narrowing last` - Re-narrow the last narrowed region
-- `:Narrowing fold` - Narrow the fold range at cursor position
+### 🎯 Usage Examples
 
-#### Range Support
-- `:10,20Narrowing` - Narrow lines 10-20
-- `:'<,'>Narrowing` - Narrow visual selection
-- `:Narrowing` (in visual mode) - Narrow current selection
+```vim
+" Visual mode selection
+v<motion>:Narrowing
 
-#### Bang Modifiers
-Add `!` to open in the current window instead of a split:
-- `:Narrowing!` - Open narrowed buffer in current window
-- `:Narrowing! write` - Write back and close the narrowed buffer
-- `:Narrowing! window` - Narrow window content in current window
+" Line range
+:10,20Narrowing
 
-### Auto-sync Behavior
+" Current fold
+:Narrowing fold
 
-When `sync_on_write` is enabled (default):
-- `:w` automatically writes changes back to the original buffer
-- `:wq` writes changes and closes the narrowed buffer
-- The original buffer is protected (read-only) during narrowing
+" Visible window
+:Narrowing window
 
-## Configuration
+" Open in current window (not floating)
+:Narrowing!
+
+" Write and close
+:Narrowing! write
+```
+
+### 📁 Fold Narrowing
+
+The `fold` subcommand intelligently detects:
+- Closed folds at cursor position
+- Logical code blocks (functions, classes)
+- Indentation-based blocks
+
+Perfect for focusing on:
+- Function definitions
+- Class implementations
+- Configuration sections
+- Any foldable content
+
+## ⚙️ Configuration
 
 ```lua
 require("narrowing").setup({
+  -- Window settings
   window = {
-    type = "float",        -- "split" or "float"
-    position = "center",   -- "left", "right", "top", "bottom", "center"
-    width = 0.95,         -- Window width (0-1 for percentage)
-    height = 0.9,         -- Window height (0-1 for percentage)
-    vertical = true,      -- Use vertical splits (for split type)
+    type = "float",        -- "float" or "split"
+    position = "center",   -- "center", "left", "right", "top", "bottom"
+    width = 0.95,         -- 95% of screen width
+    height = 0.9,         -- 90% of screen height
+    vertical = true,      -- For split type only
   },
+  
+  -- Keymaps (in narrowed buffer)
   keymaps = {
-    narrow = "<leader>nr", -- Keymap to narrow selection
-    write = "<leader>nw",  -- Keymap to write changes
-    quit = "<leader>nq",   -- Keymap to quit without saving
+    narrow = "<leader>nr", -- Visual mode: narrow selection
+    write = "<leader>nw",  -- Normal mode: write changes
+    quit = "<leader>nq",   -- Normal mode: quit
   },
+  
+  -- Behavior
   sync_on_write = true,      -- Auto-sync on :w
-  protect_original = true,   -- Make original buffer read-only
+  protect_original = true,   -- Make original read-only
   highlight_region = true,   -- Highlight narrowed region
-  highlight_group = "Visual", -- Highlight group to use
+  highlight_group = "Visual", -- Highlight style
 })
 ```
 
-## Commands Reference
+### 🪟 Window Types
 
-All functionality is available through the unified `:Narrowing` command:
+<details>
+<summary><b>Floating Window (default)</b></summary>
 
-| Command | Description |
-|---------|-------------|
-| `:Narrowing` | Narrow current selection or range |
-| `:Narrowing narrow` | Same as above (explicit) |
-| `:Narrowing write` | Write changes back to original buffer |
-| `:Narrowing quit` | Close narrowed buffer without saving |
-| `:Narrowing window` | Narrow current window's visible content |
-| `:Narrowing last` | Re-narrow the last narrowed region |
-| `:Narrowing fold` | Narrow the fold range at cursor position |
-
-### Examples
-
-```vim
-" Narrow lines 10-20
-:10,20Narrowing
-
-" Narrow visual selection
-:'<,'>Narrowing
-
-" Narrow current window content
-:Narrowing window
-
-" Write changes back
-:Narrowing write
-
-" Re-narrow last region
-:Narrowing last
-
-" Narrow fold at cursor position
-:Narrowing fold
-
-" Open in current window (bang modifier)
-:Narrowing! window
+```lua
+window = {
+  type = "float",
+  position = "center",  -- Centers the floating window
+  width = 0.95,        -- Nearly full screen
+  height = 0.9,
+}
 ```
+</details>
 
-### Fold Narrowing
+<details>
+<summary><b>Split Window</b></summary>
 
-The `:Narrowing fold` command detects and narrows fold ranges intelligently:
+```lua
+window = {
+  type = "split",
+  position = "right",   -- "left", "right", "top", "bottom"
+  width = 0.5,         -- 50% of screen
+  vertical = true,     -- Vertical split
+}
+```
+</details>
 
-1. **Closed folds**: If cursor is on a closed fold, narrows that fold range
-2. **Open folds**: If cursor is in a foldable region, detects the logical block
-3. **Indentation-based**: Falls back to indentation-based block detection
-4. **Smart detection**: Works with various fold methods (manual, indent, syntax, etc.)
+## ⌨️ Default Keymaps
 
-This is particularly useful for:
-- Function definitions
-- Class definitions  
-- Code blocks
-- Configuration sections
-- Any logically grouped content
+| Mode | Key | Action |
+|------|-----|---------|
+| Visual | `<leader>nr` | Narrow selection |
+| Normal | `<leader>nw` | Write changes (in narrowed buffer) |
+| Normal | `<leader>nq` | Quit (in narrowed buffer) |
 
-## Keymaps
+## 🔄 Auto-sync Behavior
 
-Default keymaps (can be customized in setup):
+When `sync_on_write = true` (default):
+- `:w` - Saves changes to original buffer
+- `:wq` - Saves and closes narrowed buffer
+- Original buffer is protected during narrowing
 
-- `<leader>nr` - Narrow current visual selection
-- `<leader>nw` - Write changes (in narrowed buffer)
-- `<leader>nq` - Quit without saving (in narrowed buffer)
+## 💡 Tips
 
-## License
+- Use `:Narrowing!` to replace the current window instead of creating a new one
+- Combine with folds for function-level editing
+- Multiple narrowed buffers can be open simultaneously
+- Visual highlighting shows active narrowed regions
+
+## 🙏 Acknowledgments
+
+Inspired by Emacs narrowing and the [NrrwRgn](https://github.com/chrisbra/NrrwRgn) Vim plugin.
+
+## 📄 License
 
 MIT
