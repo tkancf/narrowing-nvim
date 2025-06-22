@@ -116,7 +116,7 @@ function M.create_narrow_window(narrow_buf, instance_id, bang)
   local base_name = vim.fn.fnamemodify(original_name, ":t:r")
   if base_name == "" then base_name = "untitled" end
   
-  local buf_name = "NrrwRgn_" .. base_name .. "_" .. instance_id
+  local buf_name = "Narrowing_" .. base_name .. "_" .. instance_id
   vim.api.nvim_buf_set_name(narrow_buf, buf_name)
   
   if M.config.window.type == "float" then
