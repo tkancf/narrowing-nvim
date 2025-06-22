@@ -46,7 +46,11 @@ end, {
   end,
 })
 
--- Always provide the <Plug> mapping for manual setup
+-- Always provide <Plug> mappings for manual setup
 vim.keymap.set("v", "<Plug>(narrowing-narrow)", function()
   narrowing.narrow()
 end, { silent = true, desc = "Narrow selection" })
+
+vim.keymap.set("n", "<Plug>(narrowing-fold)", function()
+  narrowing.narrow_fold(false)
+end, { silent = true, desc = "Narrow fold at cursor" })

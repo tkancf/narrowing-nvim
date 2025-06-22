@@ -23,6 +23,7 @@ function M.setup(opts)
       narrow = "<leader>nr",
       write = "<leader>nw",
       quit = "<leader>nq",
+      fold = "<leader>nf",  -- Normal mode: narrow fold at cursor
     },
     sync_on_write = true, -- auto-sync on :w like NrrwRgn
     protect_original = true, -- make original buffer read-only
@@ -38,11 +39,21 @@ function M.setup(opts)
     vim.api.nvim_set_hl(0, "NarrowingRegion", { link = M.config.highlight_group })
   end
   
-  -- Set up visual mode keymap if enabled
-  if M.config.keymaps.enabled and M.config.keymaps.narrow then
-    vim.keymap.set("v", M.config.keymaps.narrow, function()
-      M.narrow()
-    end, { silent = true, desc = "Narrow selection" })
+  -- Set up keymaps if enabled
+  if M.config.keymaps.enabled then
+    -- Visual mode keymap for narrow
+    if M.config.keymaps.narrow then
+      vim.keymap.set("v", M.config.keymaps.narrow, function()
+        M.narrow()
+      end, { silent = true, desc = "Narrow selection" })
+    end
+    
+    -- Normal mode keymap for fold
+    if M.config.keymaps.fold then
+      vim.keymap.set("n", M.config.keymaps.fold, function()
+        M.narrow_fold(false)
+      end, { silent = true, desc = "Narrow fold at cursor" })
+    end
   end
 end
 

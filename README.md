@@ -118,6 +118,7 @@ require("narrowing").setup({
   keymaps = {
     enabled = false,       -- Set to true to enable default keymaps
     narrow = "<leader>nr", -- Visual mode: narrow selection
+    fold = "<leader>nf",   -- Normal mode: narrow fold at cursor
     write = "<leader>nw",  -- Normal mode: write changes (in narrowed buffer)
     quit = "<leader>nq",   -- Normal mode: quit (in narrowed buffer)
   },
@@ -174,18 +175,24 @@ require("narrowing").setup({
 
 This will set up:
 - Visual mode: `<leader>nr` - Narrow selection
+- Normal mode: `<leader>nf` - Narrow fold at cursor
 - Normal mode: `<leader>nw` - Write changes (in narrowed buffer)
 - Normal mode: `<leader>nq` - Quit (in narrowed buffer)
 
 ### Option 2: Set Your Own Keymaps
 
 ```lua
--- Using <Plug> mapping
-vim.keymap.set("v", "gz", "<Plug>(narrowing-narrow)")
+-- Using <Plug> mappings
+vim.keymap.set("v", "gz", "<Plug>(narrowing-narrow)")  -- Visual selection
+vim.keymap.set("n", "gZ", "<Plug>(narrowing-fold)")    -- Fold at cursor
 
--- Or direct function call
+-- Or direct function calls
 vim.keymap.set("v", "gz", function()
   require("narrowing").narrow()
+end)
+
+vim.keymap.set("n", "gZ", function()
+  require("narrowing").narrow_fold()
 end)
 ```
 
