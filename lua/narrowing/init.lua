@@ -82,8 +82,16 @@ function M.narrow()
   
   -- Set a temporary buffer name to avoid "No file name" error
   local original_name = vim.api.nvim_buf_get_name(original_buf)
-  local buf_name = original_name ~= "" and original_name or "untitled"
-  vim.api.nvim_buf_set_name(narrow_buf, buf_name .. " [Narrowed]")
+  local base_name = original_name ~= "" and original_name or "untitled"
+  
+  -- Generate unique buffer name to avoid conflicts
+  local counter = 1
+  local buf_name = base_name .. " [Narrowed]"
+  while vim.fn.bufexists(buf_name) == 1 do
+    counter = counter + 1
+    buf_name = base_name .. " [Narrowed " .. counter .. "]"
+  end
+  vim.api.nvim_buf_set_name(narrow_buf, buf_name)
   
   local width = math.floor(vim.o.columns * M.config.window.width)
   local height = math.floor(vim.o.lines * M.config.window.height)
