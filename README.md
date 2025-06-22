@@ -87,11 +87,11 @@ When `sync_on_write` is enabled (default):
 ```lua
 require("narrowing").setup({
   window = {
-    type = "split",        -- "split" or "float"
-    position = "right",    -- "left", "right", "top", "bottom"
-    width = 0.5,          -- Window width (0-1 for percentage)
+    type = "float",        -- "split" or "float"
+    position = "center",   -- "left", "right", "top", "bottom", "center"
+    width = 0.8,          -- Window width (0-1 for percentage)
     height = 0.8,         -- Window height (0-1 for percentage)
-    vertical = true,      -- Use vertical splits
+    vertical = true,      -- Use vertical splits (for split type)
   },
   keymaps = {
     narrow = "<leader>nr", -- Keymap to narrow selection

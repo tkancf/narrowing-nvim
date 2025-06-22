@@ -12,10 +12,10 @@ function M.setup(opts)
   opts = opts or {}
   M.config = vim.tbl_deep_extend("force", {
     window = {
-      type = "split", -- "split" or "float"
-      position = "right", -- "left", "right", "top", "bottom"
-      width = 0.5,
-      height = 0.8,
+      type = "float", -- "split" or "float"
+      position = "center", -- "left", "right", "top", "bottom", "center"
+      width = 0.8, -- larger default width for floating window
+      height = 0.8, -- larger default height for floating window
       vertical = true, -- for split windows
     },
     keymaps = {
@@ -124,12 +124,35 @@ function M.create_narrow_window(narrow_buf, instance_id, bang)
     local width = math.floor(vim.o.columns * M.config.window.width)
     local height = math.floor(vim.o.lines * M.config.window.height)
     
+    -- Calculate position based on config
+    local col, row
+    if M.config.window.position == "center" then
+      col = math.floor((vim.o.columns - width) / 2)
+      row = math.floor((vim.o.lines - height) / 2)
+    elseif M.config.window.position == "right" then
+      col = vim.o.columns - width - 2
+      row = math.floor((vim.o.lines - height) / 2)
+    elseif M.config.window.position == "left" then
+      col = 2
+      row = math.floor((vim.o.lines - height) / 2)
+    elseif M.config.window.position == "top" then
+      col = math.floor((vim.o.columns - width) / 2)
+      row = 2
+    elseif M.config.window.position == "bottom" then
+      col = math.floor((vim.o.columns - width) / 2)
+      row = vim.o.lines - height - 4
+    else
+      -- Default to center
+      col = math.floor((vim.o.columns - width) / 2)
+      row = math.floor((vim.o.lines - height) / 2)
+    end
+    
     local win_opts = {
       relative = "editor",
       width = width,
       height = height,
-      col = vim.o.columns - width - 2,
-      row = math.floor((vim.o.lines - height) / 2),
+      col = col,
+      row = row,
       style = "minimal",
       border = "rounded",
       title = " " .. buf_name .. " ",
