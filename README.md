@@ -42,16 +42,16 @@ use {
 
 1. Select text in visual mode
 2. Use one of the following methods to narrow:
-   - Execute `:Narrow` command
+   - Execute `:Narrowing` or `:Narrowing narrow` command
    - Use the default keymap `<leader>nr` (in visual mode)
 
 3. Edit the narrowed content in the floating window
 4. Save changes back to original buffer:
-   - Execute `:NarrowWrite` command
+   - Execute `:Narrowing write` command
    - Use the default keymap `<leader>nw` (in the narrowed buffer)
 
 5. Close without saving:
-   - Execute `:NarrowQuit` command
+   - Execute `:Narrowing quit` command
    - Use the default keymap `<leader>nq` (in the narrowed buffer)
 
 ## Configuration
@@ -73,9 +73,9 @@ require("narrowing").setup({
 
 ## Commands
 
-- `:Narrow` - Narrow the current visual selection
-- `:NarrowWrite` - Write changes from narrowed buffer to original
-- `:NarrowQuit` - Close narrowed buffer without saving
+- `:Narrowing` or `:Narrowing narrow` - Narrow the current visual selection
+- `:Narrowing write` - Write changes from narrowed buffer to original
+- `:Narrowing quit` - Close narrowed buffer without saving
 
 ## Keymaps
 
