@@ -1,26 +1,51 @@
 local M = {}
 
+-- State management similar to NrrwRgn
 M.state = {
   narrowed_buffers = {},
-  original_buffers = {}
+  original_buffers = {},
+  instance_id = 1,
+  last_region = nil,
 }
 
 function M.setup(opts)
   opts = opts or {}
   M.config = vim.tbl_deep_extend("force", {
     window = {
-      position = "right",
+      type = "split", -- "split" or "float"
+      position = "right", -- "left", "right", "top", "bottom"
       width = 0.5,
       height = 0.8,
+      vertical = true, -- for split windows
     },
     keymaps = {
       narrow = "<leader>nr",
       write = "<leader>nw",
       quit = "<leader>nq",
     },
+    sync_on_write = true, -- auto-sync on :w like NrrwRgn
+    protect_original = true, -- make original buffer read-only
+    highlight_region = true, -- highlight narrowed region
+    highlight_group = "Visual", -- highlight group for region
   }, opts)
+  
+  -- Set up highlight group if needed
+  if M.config.highlight_region then
+    vim.api.nvim_set_hl(0, "NarrowingRegion", { link = M.config.highlight_group })
+  end
 end
 
+-- Get next available instance ID
+function M.get_next_instance_id()
+  local id = M.state.instance_id
+  while M.state.narrowed_buffers[id] do
+    id = id + 1
+  end
+  M.state.instance_id = id + 1
+  return id
+end
+
+-- Get visual selection similar to NrrwRgn
 function M.get_visual_selection()
   local start_pos = vim.fn.getpos("'<")
   local end_pos = vim.fn.getpos("'>")
@@ -62,144 +87,216 @@ function M.get_visual_selection()
   return lines, start_line, end_line
 end
 
+-- Highlight region in original buffer
+function M.highlight_region(buf, start_line, end_line, namespace)
+  if not M.config.highlight_region then return end
+  
+  vim.api.nvim_buf_clear_namespace(buf, namespace, 0, -1)
+  for line = start_line, end_line do
+    vim.api.nvim_buf_add_highlight(buf, namespace, "NarrowingRegion", line - 1, 0, -1)
+  end
+end
+
+-- Make original buffer read-only
+function M.protect_buffer(buf, protect)
+  if not M.config.protect_original then return end
+  
+  if protect then
+    vim.api.nvim_buf_set_option(buf, "readonly", true)
+    vim.api.nvim_buf_set_option(buf, "modifiable", false)
+  else
+    vim.api.nvim_buf_set_option(buf, "readonly", false)
+    vim.api.nvim_buf_set_option(buf, "modifiable", true)
+  end
+end
+
+-- Create narrowed window (split or float)
+function M.create_narrow_window(narrow_buf, instance_id, bang)
+  local original_name = vim.api.nvim_buf_get_name(0)
+  local base_name = vim.fn.fnamemodify(original_name, ":t:r")
+  if base_name == "" then base_name = "untitled" end
+  
+  local buf_name = "NrrwRgn_" .. base_name .. "_" .. instance_id
+  vim.api.nvim_buf_set_name(narrow_buf, buf_name)
+  
+  if M.config.window.type == "float" then
+    -- Create floating window
+    local width = math.floor(vim.o.columns * M.config.window.width)
+    local height = math.floor(vim.o.lines * M.config.window.height)
+    
+    local win_opts = {
+      relative = "editor",
+      width = width,
+      height = height,
+      col = vim.o.columns - width - 2,
+      row = math.floor((vim.o.lines - height) / 2),
+      style = "minimal",
+      border = "rounded",
+      title = " " .. buf_name .. " ",
+      title_pos = "center",
+    }
+    
+    return vim.api.nvim_open_win(narrow_buf, true, win_opts)
+  else
+    -- Create split window
+    if bang then
+      -- Open in current window if bang is used
+      vim.api.nvim_set_current_buf(narrow_buf)
+      return vim.api.nvim_get_current_win()
+    else
+      -- Create split
+      local split_cmd
+      if M.config.window.vertical then
+        if M.config.window.position == "left" then
+          split_cmd = "topleft vsplit"
+        else
+          split_cmd = "botright vsplit"
+        end
+      else
+        if M.config.window.position == "top" then
+          split_cmd = "topleft split"
+        else
+          split_cmd = "botright split"
+        end
+      end
+      
+      vim.cmd(split_cmd)
+      vim.api.nvim_set_current_buf(narrow_buf)
+      
+      -- Resize window
+      if M.config.window.vertical then
+        local width = math.floor(vim.o.columns * M.config.window.width)
+        vim.cmd("vertical resize " .. width)
+      else
+        local height = math.floor(vim.o.lines * M.config.window.height)
+        vim.cmd("resize " .. height)
+      end
+      
+      return vim.api.nvim_get_current_win()
+    end
+  end
+end
+
+-- Legacy function for backward compatibility
 function M.narrow()
   local lines, start_line, end_line = M.get_visual_selection()
   if not lines then
     vim.notify("No visual selection", vim.log.levels.WARN)
     return
   end
+  
+  M.narrow_region(start_line, end_line, false)
+end
 
+-- Main narrowing function similar to NrrwRgn
+function M.narrow_region(start_line, end_line, bang)
+  start_line = start_line or vim.fn.line(".")
+  end_line = end_line or start_line
+  bang = bang or false
+  
   local original_buf = vim.api.nvim_get_current_buf()
   local original_win = vim.api.nvim_get_current_win()
+  local instance_id = M.get_next_instance_id()
   
+  -- Get lines from the region
+  local lines = vim.api.nvim_buf_get_lines(original_buf, start_line - 1, end_line, false)
+  
+  -- Create narrowed buffer
   local narrow_buf = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(narrow_buf, 0, -1, false, lines)
   
+  -- Set buffer options
   local filetype = vim.bo[original_buf].filetype
   vim.bo[narrow_buf].filetype = filetype
   vim.bo[narrow_buf].modifiable = true
   vim.bo[narrow_buf].buftype = ""  -- Allow normal buffer operations like :w
   
-  -- Set a temporary buffer name to avoid "No file name" error
-  local original_name = vim.api.nvim_buf_get_name(original_buf)
-  local base_name = original_name ~= "" and original_name or "untitled"
+  -- Create narrowed window
+  local narrow_win = M.create_narrow_window(narrow_buf, instance_id, bang)
   
-  -- Generate unique buffer name to avoid conflicts
-  local counter = 1
-  local buf_name = base_name .. " [Narrowed]"
-  while vim.fn.bufexists(buf_name) == 1 do
-    counter = counter + 1
-    buf_name = base_name .. " [Narrowed " .. counter .. "]"
-  end
-  vim.api.nvim_buf_set_name(narrow_buf, buf_name)
+  -- Create namespace for highlighting
+  local namespace = vim.api.nvim_create_namespace("narrowing_" .. instance_id)
   
-  local width = math.floor(vim.o.columns * M.config.window.width)
-  local height = math.floor(vim.o.lines * M.config.window.height)
+  -- Highlight region in original buffer
+  M.highlight_region(original_buf, start_line, end_line, namespace)
   
-  local win_opts = {
-    relative = "editor",
-    width = width,
-    height = height,
-    col = vim.o.columns - width - 2,
-    row = math.floor((vim.o.lines - height) / 2),
-    style = "minimal",
-    border = "rounded",
-    title = " Narrowed Region ",
-    title_pos = "center",
-  }
+  -- Protect original buffer
+  M.protect_buffer(original_buf, true)
   
-  local narrow_win = vim.api.nvim_open_win(narrow_buf, true, win_opts)
-  
-  M.state.narrowed_buffers[narrow_buf] = {
+  M.state.narrowed_buffers[instance_id] = {
+    narrow_buf = narrow_buf,
     original_buf = original_buf,
+    original_win = original_win,
     start_line = start_line,
     end_line = end_line,
     window = narrow_win,
+    namespace = namespace,
+  }
+  
+  -- Store last region for :NRL command
+  M.state.last_region = {
+    buf = original_buf,
+    start_line = start_line,
+    end_line = end_line,
   }
   
   M.state.original_buffers[original_buf] = M.state.original_buffers[original_buf] or {}
-  table.insert(M.state.original_buffers[original_buf], narrow_buf)
+  table.insert(M.state.original_buffers[original_buf], instance_id)
   
-  vim.keymap.set("n", M.config.keymaps.write, function() M.write() end, { buffer = narrow_buf })
+  -- Set up buffer-local keymaps
+  vim.keymap.set("n", M.config.keymaps.write, function() M.widen_region(false) end, { buffer = narrow_buf })
   vim.keymap.set("n", M.config.keymaps.quit, function() M.quit() end, { buffer = narrow_buf })
   
-  -- Set up autocommands for :w and :wq behavior
-  local augroup = vim.api.nvim_create_augroup("narrowing_buf_" .. narrow_buf, { clear = true })
+  -- Set up auto-sync on write if enabled
+  if M.config.sync_on_write then
+    local augroup = vim.api.nvim_create_augroup("narrowing_" .. instance_id, { clear = true })
+    
+    -- Handle :w (write) command - auto-sync back to original
+    vim.api.nvim_create_autocmd("BufWriteCmd", {
+      group = augroup,
+      buffer = narrow_buf,
+      callback = function()
+        M.write_to_original(instance_id)
+        -- Mark buffer as saved
+        vim.bo[narrow_buf].modified = false
+      end,
+    })
+    
+    -- Override :wq and :x commands
+    vim.api.nvim_buf_call(narrow_buf, function()
+      vim.cmd("cnoreabbrev <buffer> wq lua require('narrowing').widen_region(true)")
+      vim.cmd("cnoreabbrev <buffer> x lua require('narrowing').widen_region(true)")
+    end)
+  end
   
-  -- Handle :w (write) command
-  vim.api.nvim_create_autocmd("BufWriteCmd", {
-    group = augroup,
-    buffer = narrow_buf,
-    callback = function()
-      M.write()
-      -- Mark buffer as saved to prevent "No write since last change" warnings
-      vim.bo[narrow_buf].modified = false
-    end,
-  })
+  -- Handle window/buffer cleanup
+  local cleanup_augroup = vim.api.nvim_create_augroup("narrowing_cleanup_" .. instance_id, { clear = true })
   
-  -- Override :wq and :x commands with buffer-local abbreviations
-  vim.api.nvim_buf_call(narrow_buf, function()
-    vim.cmd("cnoreabbrev <buffer> wq lua require('narrowing').write_and_quit()")
-    vim.cmd("cnoreabbrev <buffer> x lua require('narrowing').write_and_quit()")
-  end)
-  
-  -- Handle window close to clean up buffer
-  vim.api.nvim_create_autocmd("WinClosed", {
-    group = augroup,
+  vim.api.nvim_create_autocmd({"WinClosed", "BufUnload"}, {
+    group = cleanup_augroup,
     callback = function(args)
-      local closed_win = tonumber(args.match)
-      if closed_win == narrow_win then
+      local target_win = tonumber(args.match)
+      if target_win == narrow_win or args.buf == narrow_buf then
         vim.schedule(function()
-          -- Force delete the buffer to clean up
-          if vim.api.nvim_buf_is_valid(narrow_buf) then
-            vim.api.nvim_buf_delete(narrow_buf, { force = true })
-          end
-          -- Clean up state
-          M.state.narrowed_buffers[narrow_buf] = nil
-          local original_narrowed = M.state.original_buffers[original_buf]
-          if original_narrowed then
-            for i, buf in ipairs(original_narrowed) do
-              if buf == narrow_buf then
-                table.remove(original_narrowed, i)
-                break
-              end
-            end
-          end
+          M.cleanup_narrowed_buffer(instance_id)
         end)
-      end
-    end,
-  })
-  
-  -- Handle buffer unload for additional cleanup
-  vim.api.nvim_create_autocmd("BufUnload", {
-    group = augroup,
-    buffer = narrow_buf,
-    callback = function()
-      -- Clean up state when buffer is unloaded
-      M.state.narrowed_buffers[narrow_buf] = nil
-      local original_narrowed = M.state.original_buffers[original_buf]
-      if original_narrowed then
-        for i, buf in ipairs(original_narrowed) do
-          if buf == narrow_buf then
-            table.remove(original_narrowed, i)
-            break
-          end
-        end
       end
     end,
   })
 end
 
-function M.write()
-  local narrow_buf = vim.api.nvim_get_current_buf()
-  local info = M.state.narrowed_buffers[narrow_buf]
-  
+-- Write changes to original buffer (like NrrwRgn :WR)
+function M.write_to_original(instance_id)
+  local info = M.state.narrowed_buffers[instance_id]
   if not info then
     vim.notify("Not in a narrowed buffer", vim.log.levels.WARN)
-    return
+    return false
   end
   
-  local lines = vim.api.nvim_buf_get_lines(narrow_buf, 0, -1, false)
+  local lines = vim.api.nvim_buf_get_lines(info.narrow_buf, 0, -1, false)
+  
+  -- Temporarily make original buffer modifiable
+  M.protect_buffer(info.original_buf, false)
   
   vim.api.nvim_buf_set_lines(
     info.original_buf,
@@ -209,37 +306,122 @@ function M.write()
     lines
   )
   
-  vim.notify("Changes written to original buffer", vim.log.levels.INFO)
-end
-
-function M.write_and_quit()
-  M.write()
-  M.quit()
-end
-
-function M.quit()
-  local narrow_buf = vim.api.nvim_get_current_buf()
-  local info = M.state.narrowed_buffers[narrow_buf]
+  -- Restore protection
+  M.protect_buffer(info.original_buf, true)
   
-  if not info then
+  vim.notify("Changes written to original buffer", vim.log.levels.INFO)
+  return true
+end
+
+-- Widen region (NrrwRgn :WR command)
+function M.widen_region(close_after)
+  local narrow_buf = vim.api.nvim_get_current_buf()
+  local instance_id = nil
+  
+  -- Find the instance ID for this buffer
+  for id, info in pairs(M.state.narrowed_buffers) do
+    if info.narrow_buf == narrow_buf then
+      instance_id = id
+      break
+    end
+  end
+  
+  if not instance_id then
     vim.notify("Not in a narrowed buffer", vim.log.levels.WARN)
     return
   end
   
-  vim.api.nvim_win_close(info.window, true)
-  vim.api.nvim_buf_delete(narrow_buf, { force = true })
+  -- Write changes back
+  if M.write_to_original(instance_id) then
+    if close_after then
+      M.cleanup_narrowed_buffer(instance_id)
+    end
+  end
+end
+
+-- Narrow window content (NrrwRgn :NW command)
+function M.narrow_window(bang)
+  local start_line = vim.fn.line("w0")
+  local end_line = vim.fn.line("w$")
+  M.narrow_region(start_line, end_line, bang)
+end
+
+-- Narrow last region (NrrwRgn :NRL command)
+function M.narrow_last(bang)
+  if not M.state.last_region then
+    vim.notify("No previous narrowed region", vim.log.levels.WARN)
+    return
+  end
   
-  M.state.narrowed_buffers[narrow_buf] = nil
+  local last = M.state.last_region
+  if not vim.api.nvim_buf_is_valid(last.buf) then
+    vim.notify("Previous buffer no longer exists", vim.log.levels.WARN)
+    return
+  end
   
+  -- Switch to the original buffer first
+  local current_buf = vim.api.nvim_get_current_buf()
+  if current_buf ~= last.buf then
+    vim.api.nvim_set_current_buf(last.buf)
+  end
+  
+  M.narrow_region(last.start_line, last.end_line, bang)
+end
+
+-- Cleanup narrowed buffer
+function M.cleanup_narrowed_buffer(instance_id)
+  local info = M.state.narrowed_buffers[instance_id]
+  if not info then return end
+  
+  -- Clear highlighting
+  vim.api.nvim_buf_clear_namespace(info.original_buf, info.namespace, 0, -1)
+  
+  -- Restore original buffer protection
+  M.protect_buffer(info.original_buf, false)
+  
+  -- Force delete the buffer to clean up
+  if vim.api.nvim_buf_is_valid(info.narrow_buf) then
+    vim.api.nvim_buf_delete(info.narrow_buf, { force = true })
+  end
+  
+  -- Clean up state
+  M.state.narrowed_buffers[instance_id] = nil
   local original_narrowed = M.state.original_buffers[info.original_buf]
   if original_narrowed then
-    for i, buf in ipairs(original_narrowed) do
-      if buf == narrow_buf then
+    for i, id in ipairs(original_narrowed) do
+      if id == instance_id then
         table.remove(original_narrowed, i)
         break
       end
     end
   end
+end
+
+-- Legacy quit function
+function M.quit()
+  local narrow_buf = vim.api.nvim_get_current_buf()
+  local instance_id = nil
+  
+  -- Find the instance ID for this buffer
+  for id, info in pairs(M.state.narrowed_buffers) do
+    if info.narrow_buf == narrow_buf then
+      instance_id = id
+      break
+    end
+  end
+  
+  if instance_id then
+    M.cleanup_narrowed_buffer(instance_id)
+  end
+end
+
+-- Legacy write function for backward compatibility
+function M.write()
+  M.widen_region(false)
+end
+
+function M.write_and_quit()
+  M.widen_region(true)
 end
 
 return M

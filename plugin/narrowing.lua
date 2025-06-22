@@ -10,13 +10,43 @@ vim.g.loaded_narrowing = 1
 
 local narrowing = require("narrowing")
 
+-- NrrwRgn-style commands
+vim.api.nvim_create_user_command("NR", function(opts)
+  narrowing.narrow_region(opts.line1, opts.line2, opts.bang)
+end, { range = true, bang = true })
+
+vim.api.nvim_create_user_command("NarrowRegion", function(opts)
+  narrowing.narrow_region(opts.line1, opts.line2, opts.bang)
+end, { range = true, bang = true })
+
+vim.api.nvim_create_user_command("WR", function(opts)
+  narrowing.widen_region(opts.bang)
+end, { bang = true })
+
+vim.api.nvim_create_user_command("WidenRegion", function(opts)
+  narrowing.widen_region(opts.bang)
+end, { bang = true })
+
+vim.api.nvim_create_user_command("NW", function(opts)
+  narrowing.narrow_window(opts.bang)
+end, { bang = true })
+
+vim.api.nvim_create_user_command("NarrowWindow", function(opts)
+  narrowing.narrow_window(opts.bang)
+end, { bang = true })
+
+vim.api.nvim_create_user_command("NRL", function(opts)
+  narrowing.narrow_last(opts.bang)
+end, { bang = true })
+
+-- Keep backward compatibility with old Narrowing command
 vim.api.nvim_create_user_command("Narrowing", function(opts)
   local subcommand = opts.fargs[1]
   
   if not subcommand or subcommand == "narrow" then
-    narrowing.narrow()
+    narrowing.narrow_region(vim.fn.line("'<"), vim.fn.line("'>"), false)
   elseif subcommand == "write" then
-    narrowing.write()
+    narrowing.widen_region(false)
   elseif subcommand == "quit" then
     narrowing.quit()
   else
