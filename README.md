@@ -4,13 +4,14 @@ A Neovim plugin that provides Emacs-style narrowing functionality, similar to Nr
 
 ## Features
 
-- **NrrwRgn-style commands**: `:NR`, `:WR`, `:NW`, `:NRL` with full compatibility
+- **Unified command interface**: Single `:Narrowing` command with subcommands for all functionality
 - **Flexible window types**: Split windows (like NrrwRgn) or floating windows
 - **Auto-sync on write**: Changes automatically sync back to original buffer with `:w`
 - **Region highlighting**: Visual feedback showing narrowed region in original buffer
 - **Buffer protection**: Original buffer becomes read-only during narrowing
 - **Multiple instances**: Support for multiple narrowed regions simultaneously
 - **Visual mode support**: Character-wise, line-wise, and block-wise selections
+- **NrrwRgn-inspired features**: Window narrowing, last region re-selection, and more
 - **Configurable behavior**: Extensive customization options
 
 ## Requirements
@@ -45,28 +46,34 @@ use {
 
 ### Basic Narrowing
 
-1. **Select a region**: Use visual mode to select text, or use line ranges with Ex commands
-2. **Narrow the region**: Execute `:NR` (or `:NarrowRegion`)
+1. **Select a region**: Use visual mode to select text, or specify line ranges
+2. **Narrow the region**: Execute `:Narrowing` or `:Narrowing narrow`
 3. **Edit**: Make changes in the narrowed buffer
-4. **Write back**: Use `:w` to automatically sync changes, or `:WR` to write and stay open
+4. **Write back**: Use `:w` to automatically sync changes, or `:Narrowing write` to write explicitly
 5. **Close**: Use `:q` to close, or `:wq` to write and close
 
-### NrrwRgn-Compatible Commands
+### Commands
 
-- `:NR [range]` - Narrow the selected region (current line if no range)
-- `:NarrowRegion [range]` - Same as `:NR` (long form)
-- `:WR` - Write changes back to original buffer
-- `:WidenRegion` - Same as `:WR` (long form)
-- `:NW` - Narrow the current window's visible content
-- `:NarrowWindow` - Same as `:NW` (long form)
-- `:NRL` - Re-narrow the last narrowed region
+#### Primary Command
+- `:Narrowing [subcommand]` - Main command with optional subcommands
 
-### Bang Modifiers
+#### Subcommands
+- `:Narrowing` or `:Narrowing narrow` - Narrow selected region or range
+- `:Narrowing write` - Write changes back to original buffer
+- `:Narrowing quit` - Close narrowed buffer without saving
+- `:Narrowing window` - Narrow current window's visible content
+- `:Narrowing last` - Re-narrow the last narrowed region
 
-Add `!` to most commands to open in the current window instead of a split:
-- `:NR!` - Open narrowed buffer in current window
-- `:WR!` - Write back and close the narrowed buffer
-- `:NW!` - Narrow window content in current window
+#### Range Support
+- `:10,20Narrowing` - Narrow lines 10-20
+- `:'<,'>Narrowing` - Narrow visual selection
+- `:Narrowing` (in visual mode) - Narrow current selection
+
+#### Bang Modifiers
+Add `!` to open in the current window instead of a split:
+- `:Narrowing!` - Open narrowed buffer in current window
+- `:Narrowing! write` - Write back and close the narrowed buffer
+- `:Narrowing! window` - Narrow window content in current window
 
 ### Auto-sync Behavior
 
@@ -98,19 +105,40 @@ require("narrowing").setup({
 })
 ```
 
-## Commands
+## Commands Reference
 
-### Primary Commands (NrrwRgn-compatible)
-- `:NR [range]` - Narrow region (current line if no range given)
-- `:NarrowRegion [range]` - Narrow region (long form)
-- `:WR` - Write changes back to original buffer
-- `:WidenRegion` - Write changes back (long form)
-- `:NW` - Narrow current window's visible content
-- `:NarrowWindow` - Narrow window content (long form)
-- `:NRL` - Re-narrow the last narrowed region
+All functionality is available through the unified `:Narrowing` command:
 
-### Legacy Commands (backward compatibility)
-- `:Narrowing [narrow|write|quit]` - Legacy subcommand interface
+| Command | Description |
+|---------|-------------|
+| `:Narrowing` | Narrow current selection or range |
+| `:Narrowing narrow` | Same as above (explicit) |
+| `:Narrowing write` | Write changes back to original buffer |
+| `:Narrowing quit` | Close narrowed buffer without saving |
+| `:Narrowing window` | Narrow current window's visible content |
+| `:Narrowing last` | Re-narrow the last narrowed region |
+
+### Examples
+
+```vim
+" Narrow lines 10-20
+:10,20Narrowing
+
+" Narrow visual selection
+:'<,'>Narrowing
+
+" Narrow current window content
+:Narrowing window
+
+" Write changes back
+:Narrowing write
+
+" Re-narrow last region
+:Narrowing last
+
+" Open in current window (bang modifier)
+:Narrowing! window
+```
 
 ## Keymaps
 
