@@ -22,13 +22,13 @@ function M.setup(opts)
 end
 
 function M.get_visual_selection()
-  local mode = vim.fn.mode()
-  if mode ~= "v" and mode ~= "V" and mode ~= "\22" then
-    return nil, nil, nil
-  end
-
   local start_pos = vim.fn.getpos("'<")
   local end_pos = vim.fn.getpos("'>")
+  
+  -- Check if we have a valid visual selection
+  if start_pos[2] == 0 or end_pos[2] == 0 then
+    return nil, nil, nil
+  end
   
   local start_line = start_pos[2]
   local start_col = start_pos[3]
@@ -37,7 +37,11 @@ function M.get_visual_selection()
 
   local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false)
   
-  if mode == "v" then
+  -- Get the visual mode type from the register
+  local visual_mode = vim.fn.visualmode()
+  
+  if visual_mode == "v" then
+    -- Character-wise visual selection
     if #lines == 1 then
       lines[1] = string.sub(lines[1], start_col, end_col)
     else
@@ -46,7 +50,14 @@ function M.get_visual_selection()
         lines[#lines] = string.sub(lines[#lines], 1, end_col)
       end
     end
+  elseif visual_mode == "\22" then
+    -- Block-wise visual selection
+    local width = end_col - start_col + 1
+    for i, line in ipairs(lines) do
+      lines[i] = string.sub(line, start_col, start_col + width - 1)
+    end
   end
+  -- Line-wise visual selection (V) - use lines as-is
 
   return lines, start_line, end_line
 end
