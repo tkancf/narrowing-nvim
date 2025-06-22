@@ -14,8 +14,8 @@ function M.setup(opts)
     window = {
       type = "float", -- "split" or "float"
       position = "center", -- "left", "right", "top", "bottom", "center"
-      width = 0.8, -- larger default width for floating window
-      height = 0.8, -- larger default height for floating window
+      width = 0.95, -- almost full screen width
+      height = 0.9, -- almost full screen height
       vertical = true, -- for split windows
     },
     keymaps = {

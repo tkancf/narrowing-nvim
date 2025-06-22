@@ -89,8 +89,8 @@ require("narrowing").setup({
   window = {
     type = "float",        -- "split" or "float"
     position = "center",   -- "left", "right", "top", "bottom", "center"
-    width = 0.8,          -- Window width (0-1 for percentage)
-    height = 0.8,         -- Window height (0-1 for percentage)
+    width = 0.95,         -- Window width (0-1 for percentage)
+    height = 0.9,         -- Window height (0-1 for percentage)
     vertical = true,      -- Use vertical splits (for split type)
   },
   keymaps = {
