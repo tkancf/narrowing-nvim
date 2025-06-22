@@ -78,6 +78,7 @@ function M.narrow()
   local filetype = vim.bo[original_buf].filetype
   vim.bo[narrow_buf].filetype = filetype
   vim.bo[narrow_buf].modifiable = true
+  vim.bo[narrow_buf].buftype = ""  -- Allow normal buffer operations like :w
   
   local width = math.floor(vim.o.columns * M.config.window.width)
   local height = math.floor(vim.o.lines * M.config.window.height)
