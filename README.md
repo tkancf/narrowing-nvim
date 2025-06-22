@@ -63,6 +63,7 @@ use {
 - `:Narrowing quit` - Close narrowed buffer without saving
 - `:Narrowing window` - Narrow current window's visible content
 - `:Narrowing last` - Re-narrow the last narrowed region
+- `:Narrowing fold` - Narrow the fold range at cursor position
 
 #### Range Support
 - `:10,20Narrowing` - Narrow lines 10-20
@@ -117,6 +118,7 @@ All functionality is available through the unified `:Narrowing` command:
 | `:Narrowing quit` | Close narrowed buffer without saving |
 | `:Narrowing window` | Narrow current window's visible content |
 | `:Narrowing last` | Re-narrow the last narrowed region |
+| `:Narrowing fold` | Narrow the fold range at cursor position |
 
 ### Examples
 
@@ -136,9 +138,28 @@ All functionality is available through the unified `:Narrowing` command:
 " Re-narrow last region
 :Narrowing last
 
+" Narrow fold at cursor position
+:Narrowing fold
+
 " Open in current window (bang modifier)
 :Narrowing! window
 ```
+
+### Fold Narrowing
+
+The `:Narrowing fold` command detects and narrows fold ranges intelligently:
+
+1. **Closed folds**: If cursor is on a closed fold, narrows that fold range
+2. **Open folds**: If cursor is in a foldable region, detects the logical block
+3. **Indentation-based**: Falls back to indentation-based block detection
+4. **Smart detection**: Works with various fold methods (manual, indent, syntax, etc.)
+
+This is particularly useful for:
+- Function definitions
+- Class definitions  
+- Code blocks
+- Configuration sections
+- Any logically grouped content
 
 ## Keymaps
 

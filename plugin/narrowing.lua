@@ -29,10 +29,12 @@ vim.api.nvim_create_user_command("Narrowing", function(opts)
     narrowing.narrow_window(opts.bang)
   elseif subcommand == "last" then
     narrowing.narrow_last(opts.bang)
+  elseif subcommand == "fold" then
+    narrowing.narrow_fold(opts.bang)
   else
     vim.api.nvim_err_writeln("Unknown subcommand: " .. subcommand)
     vim.api.nvim_echo({
-      {"Usage: :Narrowing [narrow|write|quit|window|last]", "Normal"}
+      {"Usage: :Narrowing [narrow|write|quit|window|last|fold]", "Normal"}
     }, false, {})
   end
 end, { 
@@ -40,7 +42,7 @@ end, {
   bang = true,
   nargs = "?",
   complete = function(_, _, _)
-    return { "narrow", "write", "quit", "window", "last" }
+    return { "narrow", "write", "quit", "window", "last", "fold" }
   end,
 })
 
