@@ -143,12 +143,39 @@ function M.narrow()
     vim.cmd("cnoreabbrev <buffer> x lua require('narrowing').write_and_quit()")
   end)
   
-  -- Handle buffer close after write (for :wq)
+  -- Handle window close to clean up buffer
+  vim.api.nvim_create_autocmd("WinClosed", {
+    group = augroup,
+    callback = function(args)
+      local closed_win = tonumber(args.match)
+      if closed_win == narrow_win then
+        vim.schedule(function()
+          -- Force delete the buffer to clean up
+          if vim.api.nvim_buf_is_valid(narrow_buf) then
+            vim.api.nvim_buf_delete(narrow_buf, { force = true })
+          end
+          -- Clean up state
+          M.state.narrowed_buffers[narrow_buf] = nil
+          local original_narrowed = M.state.original_buffers[original_buf]
+          if original_narrowed then
+            for i, buf in ipairs(original_narrowed) do
+              if buf == narrow_buf then
+                table.remove(original_narrowed, i)
+                break
+              end
+            end
+          end
+        end)
+      end
+    end,
+  })
+  
+  -- Handle buffer unload for additional cleanup
   vim.api.nvim_create_autocmd("BufUnload", {
     group = augroup,
     buffer = narrow_buf,
     callback = function()
-      -- Clean up state when buffer is closed
+      -- Clean up state when buffer is unloaded
       M.state.narrowed_buffers[narrow_buf] = nil
       local original_narrowed = M.state.original_buffers[original_buf]
       if original_narrowed then
