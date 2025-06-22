@@ -132,8 +132,22 @@ function M.narrow()
     buffer = narrow_buf,
     callback = function()
       M.write()
+      -- Mark buffer as saved to prevent "No write since last change" warnings
+      vim.bo[narrow_buf].modified = false
     end,
   })
+  
+  -- Create custom :wq command for narrowed buffer
+  vim.api.nvim_buf_create_user_command(narrow_buf, "wq", function()
+    M.write()
+    M.quit()
+  end, {})
+  
+  -- Also handle :x command (same as :wq)
+  vim.api.nvim_buf_create_user_command(narrow_buf, "x", function()
+    M.write()
+    M.quit()
+  end, {})
   
   -- Handle buffer close after write (for :wq)
   vim.api.nvim_create_autocmd("BufUnload", {
