@@ -1,0 +1,17 @@
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Format:
+# <type>: <subject>
+#
+# <body>
+#
+# Type can be:
+#   feat     - new feature
+#   fix      - bug fix
+#   docs     - documentation
+#   style    - formatting, missing semi colons, etc
+#   refactor - code change that neither fixes a bug nor adds a feature
+#   test     - adding missing tests
+#   chore    - maintain
