@@ -79,74 +79,91 @@ function M.get_fold_range()
     return fold_start, fold_end
   end
   
-  -- If not in a closed fold, try to detect foldable range
-  -- Save current fold settings
-  local save_pos = vim.fn.getcurpos()
-  local save_fdm = vim.opt.foldmethod:get()
-  local save_fdc = vim.opt.foldcolumn:get()
-  
-  -- Temporarily set fold method to indent to detect logical blocks
-  vim.opt.foldmethod = "indent"
-  vim.opt.foldcolumn = "1"
-  
-  -- Force fold calculation
-  vim.cmd("normal! zx")
-  
-  -- Now check for fold range again
-  fold_start = vim.fn.foldclosed(current_line)
-  fold_end = vim.fn.foldclosedend(current_line)
-  
-  -- If still no fold, try to find logical block based on indentation
-  if fold_start == -1 or fold_end == -1 then
-    local current_indent = vim.fn.indent(current_line)
+  -- Check if we're in an open fold using fold level
+  local current_fold_level = vim.fn.foldlevel(current_line)
+  if current_fold_level > 0 then
+    -- Find the start of this fold
     fold_start = current_line
-    fold_end = current_line
-    
-    -- Find start: go backwards to find start of current indentation block
     for line = current_line - 1, 1, -1 do
-      local line_text = vim.fn.getline(line)
-      if line_text:match("^%s*$") then
-        -- Skip blank lines
-        goto continue_start
-      end
-      local line_indent = vim.fn.indent(line)
-      if line_indent < current_indent then
+      local fold_level = vim.fn.foldlevel(line)
+      if fold_level < current_fold_level then
         break
       end
-      if line_indent == current_indent then
-        fold_start = line
+      if fold_level == current_fold_level then
+        -- Check if this line starts a fold
+        local fold_start_check = vim.fn.foldclosed(line)
+        if fold_start_check == line or vim.fn.foldlevel(line - 1) < current_fold_level then
+          fold_start = line
+          break
+        end
       end
-      ::continue_start::
+      fold_start = line
     end
     
-    -- Find end: go forwards to find end of current indentation block
-    for line = current_line + 1, vim.fn.line("$") do
-      local line_text = vim.fn.getline(line)
-      if line_text:match("^%s*$") then
-        -- Skip blank lines
-        goto continue_end
-      end
-      local line_indent = vim.fn.indent(line)
-      if line_indent < current_indent then
+    -- Find the end of this fold
+    fold_end = current_line
+    local total_lines = vim.fn.line("$")
+    for line = current_line + 1, total_lines do
+      local fold_level = vim.fn.foldlevel(line)
+      if fold_level < current_fold_level then
+        fold_end = line - 1
         break
       end
-      if line_indent >= current_indent then
-        fold_end = line
-      end
-      ::continue_end::
+      fold_end = line
     end
+    
+    return fold_start, fold_end
   end
   
-  -- Restore original fold settings
-  vim.opt.foldmethod = save_fdm
-  vim.opt.foldcolumn = save_fdc
-  vim.fn.setpos('.', save_pos)
-  vim.cmd("normal! zx")
+  -- If no fold detected, try to find logical block based on indentation
+  local current_indent = vim.fn.indent(current_line)
+  local current_text = vim.fn.getline(current_line)
   
-  -- Validate the range
-  if fold_start <= 0 then fold_start = 1 end
-  if fold_end <= 0 then fold_end = vim.fn.line("$") end
-  if fold_start > fold_end then fold_start, fold_end = fold_end, fold_start end
+  -- Skip if current line is empty
+  if current_text:match("^%s*$") then
+    vim.notify("Cannot detect fold on empty line", vim.log.levels.WARN)
+    return current_line, current_line
+  end
+  
+  fold_start = current_line
+  fold_end = current_line
+  
+  -- Find start: go backwards to find start of current indentation block
+  for line = current_line - 1, 1, -1 do
+    local line_text = vim.fn.getline(line)
+    if line_text:match("^%s*$") then
+      -- Continue past blank lines
+      goto continue_start
+    end
+    local line_indent = vim.fn.indent(line)
+    -- Stop at lines with less indentation
+    if line_indent < current_indent then
+      break
+    end
+    -- Include lines with same indentation
+    if line_indent == current_indent then
+      fold_start = line
+    end
+    ::continue_start::
+  end
+  
+  -- Find end: go forwards to find end of current indentation block
+  for line = current_line + 1, vim.fn.line("$") do
+    local line_text = vim.fn.getline(line)
+    if line_text:match("^%s*$") then
+      -- Continue past blank lines
+      goto continue_end
+    end
+    local line_indent = vim.fn.indent(line)
+    -- Stop at lines with less indentation than current
+    if line_indent < current_indent then
+      break
+    end
+    -- Include this line if it has same or greater indentation
+    -- This will capture the entire logical block including nested content
+    fold_end = line
+    ::continue_end::
+  end
   
   return fold_start, fold_end
 end
@@ -510,6 +527,7 @@ end
 
 -- Narrow fold at current cursor position
 function M.narrow_fold(bang)
+  local current_line = vim.fn.line(".")
   local fold_start, fold_end = M.get_fold_range()
   
   if fold_start == fold_end then
@@ -517,15 +535,25 @@ function M.narrow_fold(bang)
     return
   end
   
-  -- Store the fold information for visual feedback
-  local fold_info = {
-    start_line = fold_start,
-    end_line = fold_end,
-    total_lines = fold_end - fold_start + 1
-  }
+  -- Provide detailed information about what's being narrowed
+  local fold_level = vim.fn.foldlevel(current_line)
+  local detection_method = "indentation-based"
+  if fold_level > 0 then
+    detection_method = "fold-level based"
+  elseif vim.fn.foldclosed(current_line) ~= -1 then
+    detection_method = "closed fold"
+  end
   
-  vim.notify(string.format("Narrowing fold: lines %d-%d (%d lines)", 
-    fold_start, fold_end, fold_info.total_lines), vim.log.levels.INFO)
+  -- Show preview of what will be narrowed
+  local first_line = vim.fn.getline(fold_start)
+  local last_line = vim.fn.getline(fold_end)
+  
+  vim.notify(string.format(
+    "Narrowing %s fold: lines %d-%d (%d lines)\nFirst: %s\nLast: %s", 
+    detection_method, fold_start, fold_end, fold_end - fold_start + 1,
+    first_line:gsub("^%s*", ""):sub(1, 50),
+    last_line:gsub("^%s*", ""):sub(1, 50)
+  ), vim.log.levels.INFO)
   
   M.narrow_region(fold_start, fold_end, bang)
 end
