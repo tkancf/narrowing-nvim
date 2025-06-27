@@ -387,16 +387,23 @@ function M.narrow_region(start_line, end_line, bang)
       group = augroup,
       buffer = narrow_buf,
       callback = function()
-        M.write_to_original(instance_id)
-        -- Mark buffer as saved
-        vim.bo[narrow_buf].modified = false
+        -- Prevent multiple writes by checking if already processed
+        local info = M.state.narrowed_buffers[instance_id]
+        if info and not info.writing then
+          M.write_to_original(instance_id)
+          -- Mark buffer as saved
+          vim.bo[narrow_buf].modified = false
+        end
+        -- Return true to indicate we've handled the write
+        return true
       end,
     })
     
     -- Override :wq and :x commands
     vim.api.nvim_buf_call(narrow_buf, function()
-      vim.cmd("cnoreabbrev <buffer> wq lua require('narrowing').widen_region(true)")
-      vim.cmd("cnoreabbrev <buffer> x lua require('narrowing').widen_region(true)")
+      -- Use <expr> abbreviations to only expand at the beginning of command line
+      vim.cmd([[cnoreabbrev <buffer> <expr> wq (getcmdtype() == ':' && getcmdline() == 'wq') ? "lua require('narrowing').widen_region(true)" : 'wq']])
+      vim.cmd([[cnoreabbrev <buffer> <expr> x (getcmdtype() == ':' && getcmdline() == 'x') ? "lua require('narrowing').widen_region(true)" : 'x']])
     end)
   end
   
@@ -424,23 +431,47 @@ function M.write_to_original(instance_id)
     return false
   end
   
+  -- Check if we're already in the process of writing to avoid recursion
+  if info.writing then
+    vim.notify("Already writing, skipping duplicate write", vim.log.levels.DEBUG)
+    return false
+  end
+  info.writing = true
+  
   local lines = vim.api.nvim_buf_get_lines(info.narrow_buf, 0, -1, false)
+  
+  -- Update the end line based on the new content length
+  local new_end_line = info.start_line + #lines - 1
   
   -- Temporarily make original buffer modifiable
   M.protect_buffer(info.original_buf, false)
   
+  -- Delete the old content first to avoid issues with different line counts
   vim.api.nvim_buf_set_lines(
     info.original_buf,
     info.start_line - 1,
     info.end_line,
     false,
+    {}
+  )
+  
+  -- Then insert the new content
+  vim.api.nvim_buf_set_lines(
+    info.original_buf,
+    info.start_line - 1,
+    info.start_line - 1,
+    false,
     lines
   )
+  
+  -- Update the end line for future writes
+  info.end_line = new_end_line
   
   -- Restore protection
   M.protect_buffer(info.original_buf, true)
   
-  vim.notify("Changes written to original buffer", vim.log.levels.INFO)
+  info.writing = false
+  vim.notify(string.format("Changes written to original buffer (lines %d-%d)", info.start_line, new_end_line), vim.log.levels.INFO)
   return true
 end
 
